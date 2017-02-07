@@ -172,7 +172,7 @@ public:
 		返回变量：
 		注释：		*/
 
-	void extract_shape_info(uint8_t *ImageData, ShapeInfo *ShapeInfo, int Contrast, int MinContrast, int PointReduction, uint8_t *MaskImgData);
+	void extract_shape_info(uint8_t *ImageData, ShapeInfo *ShapeInfoData, int Contrast, int MinContrast, int PointReduction, uint8_t *MaskImgData);
 	/*--------------------------------------------------------------------------------------------*/
 	/*	函数名：extract_shape_info
 		函数功能：提取形状信息

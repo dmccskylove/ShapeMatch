@@ -45,3 +45,5 @@ ShapeMatchTest/ShapeMatchTest/Debug/
 ShapeMatchTest/TestImage/
 TestImage/a.bmp
 TestImage/
+ShapeMatchTest/SaveImage/
+*.lastcodeanalysissucceeded

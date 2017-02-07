@@ -40,7 +40,7 @@ int _tmain(int argc, _TCHAR* argv[])
 {
 	CShapeMatch SM;
 
-	IplImage* templateImage = cvLoadImage("..\\TestImage\\6.bmp", -1 );
+	IplImage* templateImage = cvLoadImage("..\\TestImage\\1.bmp", -1 );
 	if (!templateImage)
 	{
 		cout<< " 图片加载失败！\n";
@@ -66,8 +66,8 @@ int _tmain(int argc, _TCHAR* argv[])
 
 	/* Set model parameter */
 	shape_model ModelID;
-	ModelID.m_AngleStart		=  -45;										//起始角度
-	ModelID.m_AngleExtent	= 90;									//角度范围
+	ModelID.m_AngleStart		=  -180;								//起始角度
+	ModelID.m_AngleExtent	= 360;									//角度范围
 	ModelID.m_AngleStep		= 1;										//角度步长
 	ModelID.m_Contrast			= 120;									//高阈值
 	ModelID.m_MinContrast	= 30;									//低阈值
@@ -77,7 +77,6 @@ int _tmain(int argc, _TCHAR* argv[])
 	ModelID.m_ImageHeight  = grayTemplateImg->height;
 
 	/* Train shape model and draw contours in  model image.*/
-	//edge_list *EdgeList = (edge_list*)malloc(sizeof(edge_list));
 	edge_list EdgeList;
 	EdgeList.Granularity = 1;
 	SM.train_shape_model(grayTemplateImg, ModelID.m_Contrast	, ModelID.m_MinContrast, 1, &EdgeList);
@@ -90,7 +89,7 @@ int _tmain(int argc, _TCHAR* argv[])
 
 	cout<< "\n Search Model Program\n"; 
 	cout<< " ------------------------------------\n";
-	cout<< " 角度范围：" <<ModelID.m_AngleStart <<"°- "<<ModelID.m_AngleStart +ModelID.m_AngleExtent<<"°\n";
+	cout<< " 角度范围：" <<ModelID.m_AngleStart <<"°~ "<<ModelID.m_AngleStart +ModelID.m_AngleExtent<<"°\n";
 
 	/* Create shape model file*/
 	clock_t start_time = clock();
@@ -102,7 +101,7 @@ int _tmain(int argc, _TCHAR* argv[])
 	cout<<" Create Time = "<<total_time*1000<<"ms\n";
 
 	/* Search  model */
-	IplImage* searchImage = cvLoadImage("..\\TestImage\\mixed_04.bmp", -1 );
+	IplImage* searchImage = cvLoadImage("..\\TestImage\\f.bmp", -1 );
 	if (!searchImage)
 	{
 		cout<< " 图片加载失败！\n";
@@ -121,9 +120,9 @@ int _tmain(int argc, _TCHAR* argv[])
 	}
 
 	/* Set match parameter */
-	int NumMatch		= 3;				//匹配个数
-	float MinScore     = 0.7f;			//最小评分
-	float Greediness   = 0.7f;			//贪婪度
+	int NumMatch		= 4;				//匹配个数
+	float MinScore     = 0.8f;			//最小评分
+	float Greediness   = 0.9f;			//贪婪度
 
 	MatchResultA Result[10];
 	memset(Result, 0, 10 * sizeof(MatchResultA));
