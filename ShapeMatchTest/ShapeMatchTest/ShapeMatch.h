@@ -1,12 +1,5 @@
 #pragma once
-
-#include <opencv2/opencv.hpp>
-#include <stdio.h>
-#include <stdlib.h>
-#include <stdint.h>
-#include <string.h>
-#include <math.h>
-#include <vld.h>
+//#include "stdafx.h"
 
 using namespace std;
 using namespace cv;
@@ -47,9 +40,6 @@ struct ShapeInfo
 	int					Angel;							//旋转角度
 	int					PyLevel;						//金字塔级别
 	int					AngleNum;					//角度个数
-	//struct ShapeInfo 			*pHead;
-	//struct ShapeInfo 			*pPre;
-	//struct ShapeInfo 			*pNext;
 };
 
 //模板文件结构体

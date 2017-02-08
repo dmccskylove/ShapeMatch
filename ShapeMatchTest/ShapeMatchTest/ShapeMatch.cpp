@@ -1498,13 +1498,6 @@ void CShapeMatch::shape_match(uint8_t *SearchImage, ShapeInfo *ShapeInfoVec, int
 							break;
 					}
 
-					//if(PartialScore > ResultScore)
-					//{
-					//	ResultScore = PartialScore;		// Match score
-					//	TempPiontX  = i;						// result coordinate X
-					//	TempPiontY  = j;						// result coordinate Y
-					//}
-
 					if (PartialScore > MinScore)
 					{
 						int Angle = ShapeInfoVec[k].Angel;
@@ -1546,11 +1539,6 @@ void CShapeMatch::shape_match(uint8_t *SearchImage, ShapeInfo *ShapeInfoVec, int
 				totalResultsTemp[totalResultsNum].ResultScore = resultsPerDeg[i].ResultScore;
 				totalResultsNum++;
 			}
-
-			//ResultList[n].Angel 		  = ShapeInfoVec[k].Angel;
-			//ResultList[n].ResultScore  = ResultScore;
-			//ResultList[n].CenterLocX  = TempPiontX;
-			//ResultList[n].CenterLocY  = TempPiontY;
 			//printf(" Location:(%d, %d) Angle: %d Score: %.4f\n", TempPiontX, TempPiontY, ShapeInfoVec[k].Angel, ResultScore);
 			n++;
 		}
@@ -2209,7 +2197,7 @@ static void copyMakeBorder_8u( const uchar* src, size_t srcstep, Size srcroi, //
 		memcpy(dst + (i - top)*dststep, dst + j*dststep, dstroi.width); // 进行整行的复制
 	}
 
-	for( i = 0; i < bottom; i++ ) // 先边界
+	for( i = 0; i < bottom; i++ ) // 下边界
 	{
 		j = borderInterpolate(i + srcroi.height, srcroi.height, borderType);
 		memcpy(dst + (i + srcroi.height)*dststep, dst + j*dststep, dstroi.width); // 进行整行的复制

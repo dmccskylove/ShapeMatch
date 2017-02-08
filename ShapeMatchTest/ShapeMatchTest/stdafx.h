@@ -13,3 +13,9 @@
 
 
 // TODO: 在此处引用程序需要的其他头文件
+#include <opencv2/opencv.hpp>
+#include <stdlib.h>
+#include <stdint.h>
+#include <string.h>
+#include <math.h>
+#include <vld.h>

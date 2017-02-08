@@ -42,8 +42,5 @@ ShapeMatchTest/ShapeMatchTest/Release/
 *.idb
 *.ipch
 ShapeMatchTest/ShapeMatchTest/Debug/
-ShapeMatchTest/TestImage/
-TestImage/a.bmp
-TestImage/
 ShapeMatchTest/SaveImage/
 *.lastcodeanalysissucceeded
