@@ -204,8 +204,8 @@ public:
 	
 	void shape_match_accurate(uint8_t *SearchImage, ShapeInfo *ShapeInfoVec, int Width, int Height, int Contrast, int MinContrast, float MinScore, float Greediness, search_region *SearchRegion, MatchResultA *ResultList);
 	/*--------------------------------------------------------------------------------------------*/
-	/*	函数名：shape_match
-		函数功能：形状匹配函数
+	/*	函数名：shape_match_accurate
+		函数功能：精确形状匹配函数
 		输入变量：SearchImage 待搜索图像数据,  ShapeInfo 模板形状信息, Width 图像宽度, Height 图像高度, NumMatches 匹配目标数 MinScore 最小评分, Greediness 贪婪度, SearchRegion 搜索范围
 		返回变量：ResultList 匹配结果
 		注释：		*/

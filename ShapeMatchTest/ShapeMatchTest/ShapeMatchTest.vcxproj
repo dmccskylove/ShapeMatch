@@ -43,13 +43,13 @@
     <LinkIncremental>true</LinkIncremental>
     <IncludePath>..\include\;..\include\opencv;..\include\opencv2;$(IncludePath)</IncludePath>
     <LibraryPath>..\lib;$(LibraryPath)</LibraryPath>
-    <OutDir>..\bin\Debug</OutDir>
+    <OutDir>..\bin\Debug\</OutDir>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <LinkIncremental>false</LinkIncremental>
     <IncludePath>..\include;..\include\opencv;..\include\opencv2;$(IncludePath)</IncludePath>
     <LibraryPath>..\lib;$(LibraryPath)</LibraryPath>
-    <OutDir>..\bin\Release</OutDir>
+    <OutDir>..\bin\Release\</OutDir>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>

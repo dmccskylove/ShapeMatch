@@ -816,12 +816,12 @@ void CShapeMatch::extract_shape_info(uint8_t *ImageData, ShapeInfo *ShapeInfoDat
 
 		//printf(" 坐标个数：%d 重心坐标：(%d,%d)\n", ShapeInfoData->NoOfCordinates, ShapeInfoData->ReferPoint.x, ShapeInfoData->ReferPoint.y );
 
-		//IplImage* Test = cvCreateImage(cvSize(width, height), IPL_DEPTH_8U, 1);
-		//memcpy((uint8_t*)Test->imageData, pBufOut, width*height * sizeof(uint8_t));
-		//char buf[1024];  
-		//sprintf_s(buf,"..\\SaveImage\\%d_%d.bmp", width, ShapeInfoData->Angel); 
-		//cvSaveImage(buf, Test);
-		//cvReleaseImage(&Test);
+		IplImage* Test = cvCreateImage(cvSize(width, height), IPL_DEPTH_8U, 1);
+		memcpy((uint8_t*)Test->imageData, pBufOut, width*height * sizeof(uint8_t));
+		char buf[1024];  
+		sprintf_s(buf,"..\\SaveImage\\%d_%d.bmp", width, ShapeInfoData->Angel); 
+		cvSaveImage(buf, Test);
+		cvReleaseImage(&Test);
 
 		// change coordinates to reflect center of reference
 		int m, temp;
@@ -1076,7 +1076,7 @@ void CShapeMatch::train_shape_model(IplImage *Image, int Contrast, int MinContra
 		//cvReleaseImage(&Test);
 
 	   /* Store edge coordinates to struct */
-       EdgeList->EdgePiont = (CvPoint *) malloc(n * sizeof(CvPoint));
+       //EdgeList->EdgePiont = (CvPoint *) malloc(n * sizeof(CvPoint));
 	   memset(EdgeList->EdgePiont, 0, n * sizeof(CvPoint));
        memcpy(EdgeList->EdgePiont, pEdgePiont, n * sizeof(CvPoint));
 	}
@@ -1575,6 +1575,7 @@ void CShapeMatch::shape_match(uint8_t *SearchImage, ShapeInfo *ShapeInfoVec, int
 		}
 		*NumMatches = resultsCounter;
 	}
+	/* Free buffers for each vector */
 	free(pBufMag);
 	free(pBufGradY);
 	free(pBufGradX);
