@@ -3,10 +3,12 @@
 
 #define	MAXTARGETNUM	1024
 
+MatchResultA	resultsPerDeg[MAXTARGETNUM];	//每个角度对应的匹配结果数组
+MatchResultA	totalResultsTemp[MAXTARGETNUM];	//所有匹配结果数组
+
 CShapeMatch::CShapeMatch(void)
 {
 }
-
 
 CShapeMatch::~CShapeMatch(void)
 {
@@ -45,37 +47,27 @@ void CShapeMatch::gaussian_filter(uint8_t* corrupted, uint8_t* smooth, int width
 
 void CShapeMatch::gen_rectangle(IplImage *Image, IplImage *ModelRegion, int Row1, int Column1)
 {
-	//const int startX = Row1;
-	//const int startY = Column1;
-	//const int width  = ModelRegion->width;
-	//const int height = ModelRegion->height;
+	const int startX = Row1;
+	const int startY = Column1;
+	const int width  = ModelRegion->width;
+	const int height = ModelRegion->height;
+	const int imgWidth = Image->width;
 
-	//const int imgWidth = Image->width;
+	memset(ModelRegion->imageData, 0, ModelRegion->widthStep * ModelRegion->height);
 
-	////memset(ModelRegion->imageData, 255, ModelRegion->widthStep * ModelRegion->height);
+	int i;
+	uint8_t* imageResource = (uint8_t*)malloc(width*height);
+	for(i=0;i<height;i++)
+	{
+		memcpy((imageResource + i*width), (uint8_t*)(Image->imageData + (startY+i)*imgWidth) + startX, width);
+	}
+	memcpy((uint8_t*)ModelRegion->imageData, imageResource, width*height);
+	free(imageResource);
 
-	//int i,j;
-	//for(i=0;i<width;i++)
-	//{
-	//	for(j=0;j<height;j++)
-	//	{
-	//		*(ModelRegion->imageData + j*width + i) = *(Image->imageData + (startY + j)*imgWidth + (startX + i));
-	//	}
-	//}
-
-	//int i;
-	//uint8_t* imageResource = (uint8_t*)malloc(width*height);
-	//for(i=0;i<height;i++)
-	//{
-	//	memcpy((imageResource + i*width), (uint8_t*)(Image->imageData + (startY+i)*imgWidth) + startX, width);
-	//}
-	//memcpy((uint8_t*)ModelRegion->imageData, imageResource, width*height);
-	//free(imageResource);
-
-	cvSetImageROI(Image,cvRect(Row1,Column1,ModelRegion->width, ModelRegion->height));//设置源图像ROI
-	cvCopy(Image,ModelRegion); //复制图像
-	//cvSaveImage("..\\SaveImage\ModelRegion.bmp", ModelRegion);
-	cvResetImageROI(ModelRegion);//源图像用完后，清空ROI
+	//cvSetImageROI(Image,cvRect(Row1,Column1,ModelRegion->width, ModelRegion->height));//设置源图像ROI
+	//cvCopy(Image,ModelRegion); //复制图像
+	////cvSaveImage("..\\SaveImage\ModelRegion.bmp", ModelRegion);
+	//cvResetImageROI(ModelRegion);//源图像用完后，清空ROI
 
 	return;
 }
@@ -316,7 +308,7 @@ void CShapeMatch::initial_shape_model(shape_model *ModelID, int Width, int Heigh
 	int Length = ConvertLength(MAX(Width, Height));
 
 	int AngleStart = ModelID->m_AngleStart;
-	int AngleStop = ModelID->m_AngleStart + ModelID->m_AngleExtent;
+	int AngleStop = ModelID->m_AngleStop;
 	int AngleStep = ModelID->m_AngleStep;
 
 	switch(ModelID->m_NumLevels)
@@ -326,7 +318,7 @@ void CShapeMatch::initial_shape_model(shape_model *ModelID, int Width, int Heigh
 		{
 			/* Initial pyd3 image model list */
 			Width = Height =  Length >> 3;
-			int ShapeSize = Width * Height;
+			int ShapeSize = EdgeSize >> 2;
 			AngleStep = ModelID->m_AngleStep << 3;
 
 			if (ModelID->m_pShapeInfoPyd3Vec != NULL)
@@ -342,7 +334,12 @@ void CShapeMatch::initial_shape_model(shape_model *ModelID, int Width, int Heigh
 					continue;
 				AngleNum++;
 			}
-			AngleNum += 2;
+			if(AngleStart == AngleStop)
+			{
+				AngleNum += 1;
+			}
+			else
+				AngleNum += 2;
 			
 			ModelID->m_pShapeInfoPyd3Vec = (ShapeInfo*)malloc(AngleNum *sizeof(ShapeInfo));
 			memset(ModelID->m_pShapeInfoPyd3Vec, 0, AngleNum * sizeof(ShapeInfo));
@@ -384,7 +381,7 @@ void CShapeMatch::initial_shape_model(shape_model *ModelID, int Width, int Heigh
 				ModelID->m_pShapeInfoPyd3Vec[i].Coordinates	      = (CvPoint *) malloc(ShapeSize * sizeof(CvPoint));
 				ModelID->m_pShapeInfoPyd3Vec[i].EdgeDerivativeX = (int16_t *) malloc(ShapeSize * sizeof(int16_t));
 				ModelID->m_pShapeInfoPyd3Vec[i].EdgeDerivativeY = (int16_t *) malloc(ShapeSize * sizeof(int16_t));
-				ModelID->m_pShapeInfoPyd3Vec[i].EdgeMagnitude = (float *  ) malloc(ShapeSize * sizeof(float));
+				ModelID->m_pShapeInfoPyd3Vec[i].EdgeMagnitude = (float *  )   malloc(ShapeSize * sizeof(float));
 
 				memset(ModelID->m_pShapeInfoPyd3Vec[i].Coordinates,  	    0, ShapeSize * sizeof(CvPoint));
 				memset(ModelID->m_pShapeInfoPyd3Vec[i].EdgeDerivativeX, 0, ShapeSize * sizeof(int16_t));
@@ -392,8 +389,156 @@ void CShapeMatch::initial_shape_model(shape_model *ModelID, int Width, int Heigh
 				memset(ModelID->m_pShapeInfoPyd3Vec[i].EdgeMagnitude, 0, ShapeSize * sizeof(float));
 			}
 
+			/* Initial pyd2 image model list */
+			Width = Height =  Length >> 2;
+			ShapeSize = EdgeSize >> 1;
+			AngleStep = ModelID->m_AngleStep << 2;
+
+			if (ModelID->m_pShapeInfoPyd2Vec != NULL)
+			{
+				free(ModelID->m_pShapeInfoPyd2Vec);
+				ModelID->m_pShapeInfoPyd2Vec = NULL;
+			}
+
+			AngleNum = 0;
+			for (int iAngle = AngleStart; iAngle < AngleStop; iAngle += AngleStep)
+			{
+				if (iAngle == 0)
+					continue;
+				AngleNum++;
+			}
+
+			if(AngleStart == AngleStop)
+			{
+				AngleNum += 1;
+			}
+			else
+				AngleNum += 2;
+
+			ModelID->m_pShapeInfoPyd2Vec = (ShapeInfo*)malloc(AngleNum *sizeof(ShapeInfo));
+			memset(ModelID->m_pShapeInfoPyd2Vec, 0, AngleNum * sizeof(ShapeInfo));
+
+			if (AngleStart <= 0)
+			{
+				ModelID->m_pShapeInfoPyd2Vec[0].Angel = AngleStart;
+				ModelID->m_pShapeInfoPyd2Vec[AngleNum - 1].Angel = AngleStop;
+			}
+			else
+			{
+				ModelID->m_pShapeInfoPyd2Vec[0].Angel = 0;
+				ModelID->m_pShapeInfoPyd2Vec[1].Angel = AngleStart;
+				ModelID->m_pShapeInfoPyd2Vec[AngleNum - 1].Angel = AngleStop;
+			}
+			Angle = AngleStart + AngleStep;
+			isFilled = false;
+			for (int i = 1; i < AngleNum - 1; i++)
+			{
+				if ((!isFilled) && (Angle >= 0 && (Angle - AngleStep) < 0))
+				{
+					ModelID->m_pShapeInfoPyd2Vec[i].Angel = 0;
+					if (Angle == 0)
+					{
+						Angle += AngleStep;
+					}
+					isFilled = true;
+				}
+				else if (Angle < AngleStop && Angle != 0)
+				{
+					ModelID->m_pShapeInfoPyd2Vec[i].Angel = Angle;
+					Angle += AngleStep;
+				}
+			}
+			for (int i = 0; i < AngleNum; i++) 
+			{
+				ModelID->m_pShapeInfoPyd2Vec[i].PyLevel = 2;
+				ModelID->m_pShapeInfoPyd2Vec[i].AngleNum		  = AngleNum;
+				ModelID->m_pShapeInfoPyd2Vec[i].Coordinates	      = (CvPoint *) malloc(ShapeSize * sizeof(CvPoint));
+				ModelID->m_pShapeInfoPyd2Vec[i].EdgeDerivativeX = (int16_t *) malloc(ShapeSize * sizeof(int16_t));
+				ModelID->m_pShapeInfoPyd2Vec[i].EdgeDerivativeY = (int16_t *) malloc(ShapeSize * sizeof(int16_t));
+				ModelID->m_pShapeInfoPyd2Vec[i].EdgeMagnitude = (float *  )   malloc(ShapeSize * sizeof(float));
+
+				memset(ModelID->m_pShapeInfoPyd2Vec[i].Coordinates,  	    0, ShapeSize * sizeof(CvPoint));
+				memset(ModelID->m_pShapeInfoPyd2Vec[i].EdgeDerivativeX, 0, ShapeSize * sizeof(int16_t));
+				memset(ModelID->m_pShapeInfoPyd2Vec[i].EdgeDerivativeY, 0, ShapeSize * sizeof(int16_t));
+				memset(ModelID->m_pShapeInfoPyd2Vec[i].EdgeMagnitude, 0, ShapeSize * sizeof(float));
+			}
+
+			/* Initial pyd1 image model list */
+			Width = Height =  Length >> 1;
+			ShapeSize = EdgeSize;
+			AngleStep = ModelID->m_AngleStep << 1;
+
+			if (ModelID->m_pShapeInfoPyd1Vec != NULL)
+			{
+				free(ModelID->m_pShapeInfoPyd1Vec);
+				ModelID->m_pShapeInfoPyd1Vec = NULL;
+			}
+
+			AngleNum = 0;
+			for (int iAngle = AngleStart; iAngle < AngleStop; iAngle += AngleStep)
+			{
+				if (iAngle == 0)
+					continue;
+				AngleNum++;
+			}
+
+			if(AngleStart == AngleStop)
+			{
+				AngleNum += 1;
+			}
+			else
+				AngleNum += 2;
+
+			ModelID->m_pShapeInfoPyd1Vec = (ShapeInfo*)malloc(AngleNum *sizeof(ShapeInfo));
+			memset(ModelID->m_pShapeInfoPyd1Vec, 0, AngleNum * sizeof(ShapeInfo));
+
+			if (AngleStart <= 0)
+			{
+				ModelID->m_pShapeInfoPyd1Vec[0].Angel = AngleStart;
+				ModelID->m_pShapeInfoPyd1Vec[AngleNum - 1].Angel = AngleStop;
+			}
+			else
+			{
+				ModelID->m_pShapeInfoPyd1Vec[0].Angel = 0;
+				ModelID->m_pShapeInfoPyd1Vec[1].Angel = AngleStart;
+				ModelID->m_pShapeInfoPyd1Vec[AngleNum - 1].Angel = AngleStop;
+			}
+			Angle = AngleStart + AngleStep;
+			isFilled = false;
+			for (int i = 1; i < AngleNum - 1; i++)
+			{
+				if ((!isFilled) && (Angle >= 0 && (Angle - AngleStep) < 0))
+				{
+					ModelID->m_pShapeInfoPyd1Vec[i].Angel = 0;
+					if (Angle == 0)
+					{
+						Angle += AngleStep;
+					}
+					isFilled = true;
+				}
+				else if (Angle < AngleStop && Angle != 0)
+				{
+					ModelID->m_pShapeInfoPyd1Vec[i].Angel = Angle;
+					Angle += AngleStep;
+				}
+			}
+			for (int i = 0; i < AngleNum; i++) 
+			{
+				ModelID->m_pShapeInfoPyd1Vec[i].PyLevel = 1;
+				ModelID->m_pShapeInfoPyd1Vec[i].AngleNum		  = AngleNum;
+				ModelID->m_pShapeInfoPyd1Vec[i].Coordinates	      = (CvPoint *) malloc(ShapeSize * sizeof(CvPoint));
+				ModelID->m_pShapeInfoPyd1Vec[i].EdgeDerivativeX = (int16_t *) malloc(ShapeSize * sizeof(int16_t));
+				ModelID->m_pShapeInfoPyd1Vec[i].EdgeDerivativeY = (int16_t *) malloc(ShapeSize * sizeof(int16_t));
+				ModelID->m_pShapeInfoPyd1Vec[i].EdgeMagnitude = (float *  )   malloc(ShapeSize * sizeof(float));
+
+				memset(ModelID->m_pShapeInfoPyd1Vec[i].Coordinates,  	    0, ShapeSize * sizeof(CvPoint));
+				memset(ModelID->m_pShapeInfoPyd1Vec[i].EdgeDerivativeX, 0, ShapeSize * sizeof(int16_t));
+				memset(ModelID->m_pShapeInfoPyd1Vec[i].EdgeDerivativeY, 0, ShapeSize * sizeof(int16_t));
+				memset(ModelID->m_pShapeInfoPyd1Vec[i].EdgeMagnitude, 0, ShapeSize * sizeof(float));
+			}
+
 			/* Initial source image model list */
-		    AngleNum = ModelID->m_AngleExtent + 1;
+		    AngleNum = ModelID->m_AngleStop - ModelID->m_AngleStart + 1;
 			if (ModelID->m_pShapeInfoTmpVec != NULL)
 			{
 				free(ModelID->m_pShapeInfoTmpVec);
@@ -434,7 +579,7 @@ void CShapeMatch::initial_shape_model(shape_model *ModelID, int Width, int Heigh
 	case 0:
 		{
 			/* Initial source image model list */
-			int AngleNum = ModelID->m_AngleExtent + 1;
+			int AngleNum = ModelID->m_AngleStop - ModelID->m_AngleStart + 1;
 			if (ModelID->m_pShapeInfoTmpVec != NULL)
 			{
 				free(ModelID->m_pShapeInfoTmpVec);
@@ -488,31 +633,29 @@ bool CShapeMatch::release_shape_model(shape_model *ModelID)
 			free(pInfoPy3);
 			pInfoPy3 = NULL;
 
-			//		pInfo = ModelID->m_pShapeInfoPyd2Vec->pHead;
-			//		while(pInfo->pNext != NULL)
-			//			pInfo = pInfo->pNext;
-			//		while(pInfo->pPre != NULL)
-			//		{
-			//			pInfo = pInfo->pPre;
-			//			free(pInfo->pNext->EdgeMagnitude);
-			//			free(pInfo->pNext->EdgeDerivativeY);
-			//			free(pInfo->pNext->EdgeDerivativeX);
-			//			free(pInfo->pNext->Coordinates);
-			//			free(pInfo->pNext);
-			//		}
-			//
-			//		pInfo = ModelID->m_pShapeInfoPyd1Vec->pHead;
-			//		while(pInfo->pNext != NULL)
-			//			pInfo = pInfo->pNext;
-			//		while(pInfo->pPre != NULL)
-			//		{
-			//			pInfo = pInfo->pPre;
-			//			free(pInfo->pNext->EdgeMagnitude);
-			//			free(pInfo->pNext->EdgeDerivativeY);
-			//			free(pInfo->pNext->EdgeDerivativeX);
-			//			free(pInfo->pNext->Coordinates);
-			//			free(pInfo->pNext);
-			//		}
+			ShapeInfo * pInfoPy2 = NULL;
+			pInfoPy2 = ModelID->m_pShapeInfoPyd2Vec;
+			for (int i = 0; i < pInfoPy2[0].AngleNum; i++)
+			{
+				free(pInfoPy2[i].EdgeMagnitude);
+				free(pInfoPy2[i].EdgeDerivativeY);
+				free(pInfoPy2[i].EdgeDerivativeX);
+				free(pInfoPy2[i].Coordinates);
+			}
+			free(pInfoPy2);
+			pInfoPy2 = NULL;
+
+			ShapeInfo * pInfoPy1 = NULL;
+			pInfoPy1 = ModelID->m_pShapeInfoPyd1Vec;
+			for (int i = 0; i < pInfoPy1[0].AngleNum; i++)
+			{
+				free(pInfoPy1[i].EdgeMagnitude);
+				free(pInfoPy1[i].EdgeDerivativeY);
+				free(pInfoPy1[i].EdgeDerivativeX);
+				free(pInfoPy1[i].Coordinates);
+			}
+			free(pInfoPy1);
+			pInfoPy1 = NULL;
 
 			ShapeInfo * pInfoSrc = NULL;
 			pInfoSrc = ModelID->m_pShapeInfoTmpVec;
@@ -816,12 +959,12 @@ void CShapeMatch::extract_shape_info(uint8_t *ImageData, ShapeInfo *ShapeInfoDat
 
 		//printf(" 坐标个数：%d 重心坐标：(%d,%d)\n", ShapeInfoData->NoOfCordinates, ShapeInfoData->ReferPoint.x, ShapeInfoData->ReferPoint.y );
 
-		IplImage* Test = cvCreateImage(cvSize(width, height), IPL_DEPTH_8U, 1);
-		memcpy((uint8_t*)Test->imageData, pBufOut, width*height * sizeof(uint8_t));
-		char buf[1024];  
-		sprintf_s(buf,"..\\SaveImage\\%d_%d.bmp", width, ShapeInfoData->Angel); 
-		cvSaveImage(buf, Test);
-		cvReleaseImage(&Test);
+		//IplImage* Test = cvCreateImage(cvSize(width, height), IPL_DEPTH_8U, 1);
+		//memcpy((uint8_t*)Test->imageData, pBufOut, width*height * sizeof(uint8_t));
+		//char buf[1024];  
+		//sprintf_s(buf,"..\\SaveImage\\%d_%d.bmp", width, ShapeInfoData->Angel); 
+		//cvSaveImage(buf, Test);
+		//cvReleaseImage(&Test);
 
 		// change coordinates to reflect center of reference
 		int m, temp;
@@ -842,7 +985,7 @@ void CShapeMatch::extract_shape_info(uint8_t *ImageData, ShapeInfo *ShapeInfoDat
 	free(pInput);
 }
 
-bool CShapeMatch::build_model_list(ShapeInfo *ShapeInfoVec, uint8_t *ImageData, uint8_t *MaskData, int Width, int Height, int Contrast, int MinContrast, int AngleStart, int AngleStop, int AngleStep, int Graininess)
+bool CShapeMatch::build_model_list(ShapeInfo *ShapeInfoVec, uint8_t *ImageData, uint8_t *MaskData, int Width, int Height, int Contrast, int MinContrast, int Graininess)
 {
 	int BufferSizeSrc = Width * Height;
 	int tempLength = (int)(sqrt((float)BufferSizeSrc + (float)BufferSizeSrc) + 10);    //计算旋转扩展图像的长宽
@@ -1071,12 +1214,11 @@ void CShapeMatch::train_shape_model(IplImage *Image, int Contrast, int MinContra
 		//IplImage* Test = cvCreateImage(cvSize(width, height), IPL_DEPTH_8U, 1);
 		//memcpy((uint8_t*)Test->imageData, pBufOut, width*height * sizeof(uint8_t));
 		//char buf[1024];  
-		//sprintf_s(buf,"..\\SaveImage\\train.bmp"); 
+		//sprintf_s(buf,"..\\train_out.bmp"); 
 		//cvSaveImage(buf, Test);
 		//cvReleaseImage(&Test);
 
 	   /* Store edge coordinates to struct */
-       //EdgeList->EdgePiont = (CvPoint *) malloc(n * sizeof(CvPoint));
 	   memset(EdgeList->EdgePiont, 0, n * sizeof(CvPoint));
        memcpy(EdgeList->EdgePiont, pEdgePiont, n * sizeof(CvPoint));
 	}
@@ -1122,9 +1264,9 @@ bool CShapeMatch::create_shape_model(IplImage *Template, shape_model *ModelID)
 		bool IsBuild  = false;
 		int Contrast 	= ModelID->m_Contrast;
 		int MinContrast = ModelID->m_MinContrast;
-		int Graininess  = ModelID->m_PointReduction;
-		int AngleStart  = ModelID->m_AngleStart;
-		int AngleStop   = AngleStart + ModelID->m_AngleExtent + 1;
+		int Granularity  = ModelID->m_Granularity;
+		int AngleStart   = ModelID->m_AngleStart;
+		int AngleStop   = ModelID->m_AngleStop;
 
 		/*Build shape model*/
 		switch(ModelID->m_NumLevels)
@@ -1167,67 +1309,53 @@ bool CShapeMatch::create_shape_model(IplImage *Template, shape_model *ModelID)
 				memcpy(pMaskDataPy3, pOutMask+offset, BufferSize * sizeof(uint8_t));
 
 				IsBuild = build_model_list(ModelID->m_pShapeInfoPyd3Vec, pImageDataPy3, pMaskDataPy3, Width, Height,
-					Contrast, MinContrast, AngleStart, AngleStop, AngleStep, Graininess);
+					Contrast, MinContrast, Granularity);
 
 				free(pMaskDataPy3);
 				free(pImageDataPy3);
-				free(pOutMask);
-				free(pOut);
-				free(pIn);
 
 				if(!IsBuild)
 					return false;
-//	    		/*Get pyrmid2 image shape info vector*/
-//	    		if (ModelID->m_pShapeInfoPyd2Vec != NULL)
-//	    		{
-//	    			free(ModelID->m_pShapeInfoPyd2Vec);
-//	    			ModelID->m_pShapeInfoPyd2Vec = NULL;
-//	    		}
-//	    		ModelID->m_pShapeInfoPyd2Vec = (ShapeInfo*)malloc(sizeof(ShapeInfo));
-//	    		Width  = BorderedWidth >> 2;
-//	    		Height = BorderedHeight >> 2;
-//	    		BufferSize = Width * Height;
-//	    		AngleStep  = ModelID->m_AngleStep << 2;
-//
-//	    		uint8_t *pImageDataPy2 = (uint8_t *) memalign(8, BufferSize);
-//	        	memcpy(pImageDataPy2, pOut+in_size/4, BufferSize);
-//
-//	        	uint8_t	*pMaskDataPy2 = (uint8_t *)memalign(8, BufferSize);
-//	    		memcpy(pMaskDataPy2, pOutMask+in_size/4, BufferSize);
-//
-//	    		IsBuild = build_model_list(ModelID->m_pShapeInfoPyd2Vec, pImageDataPy2, pMaskDataPy2, Width, Height,
-//	    				Contrast, MinContrast, AngleStart, AngleStop, AngleStep, Graininess);
-//	    		if(!IsBuild)
-//	    			return false;
-//
-//				free(pMaskDataPy2);
-//	    		free(pImageDataPy2);
-//
-//	    		/*Get pyrmid1 image shape info vector*/
-//	    		if (ModelID->m_pShapeInfoPyd1Vec != NULL)
-//	    		{
-//	    			free(ModelID->m_pShapeInfoPyd1Vec);
-//	    			ModelID->m_pShapeInfoPyd1Vec = NULL;
-//	    		}
-//	    		ModelID->m_pShapeInfoPyd1Vec = (ShapeInfo*)malloc(sizeof(ShapeInfo));
-//	    		Width  = BorderedWidth >> 1;
-//	    		Height = BorderedHeight >> 1;
-//	    		BufferSize = Width * Height;
-//	    		AngleStep  = ModelID->m_AngleStep << 1;
-//
-//	    		uint8_t *pImageDataPy1 = (uint8_t *) memalign(8, BufferSize);
-//	        	memcpy(pImageDataPy1, pOut, BufferSize);
-//
-//	        	uint8_t	*pMaskDataPy1 = (uint8_t *)memalign(8, BufferSize);
-//	    		memcpy(pMaskDataPy1, pOutMask, BufferSize);
-//
-//	    		IsBuild = build_model_list(ModelID->m_pShapeInfoPyd1Vec, pImageDataPy1, pMaskDataPy1, Width, Height,
-//	    				Contrast, MinContrast, AngleStart, AngleStop, AngleStep, Graininess);
-//	    		if(!IsBuild)
-//	    			return false;
-//
-//				free(pMaskDataPy1);
-//	    		free(pImageDataPy1);
+
+	    		/*Get pyrmid2 image shape info vector*/
+	    		Width  = BorderedWidth >> 2;
+	    		Height = BorderedHeight >> 2;
+	    		BufferSize = Width * Height;
+	    		AngleStep  = ModelID->m_AngleStep << 2;
+
+	    		uint8_t *pImageDataPy2 = (uint8_t *) malloc(BufferSize);
+	        	memcpy(pImageDataPy2, pOut+in_size/4, BufferSize);
+
+	        	uint8_t	*pMaskDataPy2 = (uint8_t *)malloc(BufferSize);
+	    		memcpy(pMaskDataPy2, pOutMask+in_size/4, BufferSize);
+
+	    		IsBuild = build_model_list(ModelID->m_pShapeInfoPyd2Vec, pImageDataPy2, pMaskDataPy2, Width, Height,
+	    				Contrast, MinContrast, Granularity);
+	    		if(!IsBuild)
+	    			return false;
+
+				free(pMaskDataPy2);
+	    		free(pImageDataPy2);
+
+	    		/*Get pyrmid1 image shape info vector*/
+	    		Width  = BorderedWidth >> 1;
+	    		Height = BorderedHeight >> 1;
+	    		BufferSize = Width * Height;
+	    		AngleStep  = ModelID->m_AngleStep << 1;
+
+	    		uint8_t *pImageDataPy1 = (uint8_t *) malloc(BufferSize);
+	        	memcpy(pImageDataPy1, pOut, BufferSize);
+
+	        	uint8_t	*pMaskDataPy1 = (uint8_t *)malloc(BufferSize);
+	    		memcpy(pMaskDataPy1, pOutMask, BufferSize);
+
+	    		IsBuild = build_model_list(ModelID->m_pShapeInfoPyd1Vec, pImageDataPy1, pMaskDataPy1, Width, Height,
+	    				Contrast, MinContrast, Granularity);
+	    		if(!IsBuild)
+	    			return false;
+
+				free(pMaskDataPy1);
+	    		free(pImageDataPy1);
 
 				/*Get temple image shape info vector*/
 				Width  = BorderedWidth;
@@ -1235,9 +1363,13 @@ bool CShapeMatch::create_shape_model(IplImage *Template, shape_model *ModelID)
 				AngleStep = ModelID->m_AngleStep;
 
 				IsBuild = build_model_list(ModelID->m_pShapeInfoTmpVec, (uint8_t *)(ImgBordered->imageData), (uint8_t *)(ImgMask->imageData),
-					Width, Height, Contrast, MinContrast, AngleStart, AngleStop, AngleStep, Graininess);
+					Width, Height, Contrast, MinContrast, Granularity);
 				if(!IsBuild)
 					return false;
+
+				free(pOutMask);
+				free(pOut);
+				free(pIn);
 				break;
 			}
 //	        case 2:
@@ -1262,7 +1394,7 @@ bool CShapeMatch::create_shape_model(IplImage *Template, shape_model *ModelID)
 //	    		memcpy(pMaskDataPy2, pOutMask+in_size/4, BufferSize);
 //
 //	    		IsBuild = build_model_list(ModelID->m_pShapeInfoPyd2Vec, pImageDataPy2, pMaskDataPy2, Width, Height,
-//	    				Contrast, MinContrast, AngleStart, AngleStop, AngleStep, Graininess);
+//	    				Contrast, MinContrast, Granularity);
 //	    		if(!IsBuild)
 //	    			return false;
 //
@@ -1287,7 +1419,7 @@ bool CShapeMatch::create_shape_model(IplImage *Template, shape_model *ModelID)
 //	        	uint8_t	*pMaskDataPy1 = (uint8_t *)memalign(8, BufferSize);
 //
 //	    		IsBuild = build_model_list(ModelID->m_pShapeInfoPyd1Vec, pImageDataPy1, pMaskDataPy1, Width, Height,
-//	    				Contrast, MinContrast, AngleStart, AngleStop, AngleStep, Graininess);
+//	    				Contrast, MinContrast, Granularity);
 //	    		if(!IsBuild)
 //	    			return false;
 //
@@ -1306,7 +1438,7 @@ bool CShapeMatch::create_shape_model(IplImage *Template, shape_model *ModelID)
 //	    		ModelID->m_pShapeInfoTmpVec = (ShapeInfo*)malloc(sizeof(ShapeInfo));
 //
 //	    		IsBuild = build_model_list(ModelID->m_pShapeInfoTmpVec, (uint8_t *)(ImgBordered->imageData), (uint8_t *)(ImgMask->imageData),
-//	    				Width, Height, Contrast, MinContrast, AngleStart, AngleStop, AngleStep, Graininess);
+//	    				Width, Height, Contrast, MinContrast, Granularity);
 //	    		if(!IsBuild)
 //	    			return false;
 //
@@ -1333,7 +1465,7 @@ bool CShapeMatch::create_shape_model(IplImage *Template, shape_model *ModelID)
 //	        	uint8_t	*pMaskDataPy1 = (uint8_t *)memalign(8, BufferSize);
 //
 //	    		IsBuild = build_model_list(ModelID->m_pShapeInfoPyd1Vec, pImageDataPy1, pMaskDataPy1, Width, Height,
-//	    				Contrast, MinContrast, AngleStart, AngleStop, AngleStep, Graininess);
+//	    				Contrast, MinContrast, Granularity);
 //	    		if(!IsBuild)
 //	    			return false;
 //
@@ -1352,7 +1484,7 @@ bool CShapeMatch::create_shape_model(IplImage *Template, shape_model *ModelID)
 //	    		ModelID->m_pShapeInfoTmpVec = (ShapeInfo*)malloc(sizeof(ShapeInfo));
 //
 //	    		IsBuild = build_model_list(ModelID->m_pShapeInfoTmpVec, (uint8_t *)(ImgBordered->imageData), (uint8_t *)(ImgMask->imageData),
-//	    				Width, Height, Contrast, MinContrast, AngleStart, AngleStop, AngleStep, Graininess);
+//	    				Width, Height, Contrast, MinContrast, Granularity);
 //	    		if(!IsBuild)
 //	    			return false;
 //
@@ -1366,7 +1498,7 @@ bool CShapeMatch::create_shape_model(IplImage *Template, shape_model *ModelID)
 	    		AngleStep = ModelID->m_AngleStep;
 
 	    		IsBuild = build_model_list(ModelID->m_pShapeInfoTmpVec, (uint8_t *)(ImgBordered->imageData), (uint8_t *)(ImgMask->imageData),
-	    				Width, Height, Contrast, MinContrast, AngleStart, AngleStop, AngleStep, Graininess);
+	    				Width, Height, Contrast, MinContrast, Granularity);
 	    		if(!IsBuild)
 	    			return false;
 
@@ -1377,8 +1509,8 @@ bool CShapeMatch::create_shape_model(IplImage *Template, shape_model *ModelID)
 				break;
 			}
 		}
-		cvReleaseImage(&ImgMask);
-		cvReleaseImage(&ImgBordered);
+		//cvReleaseImage(&ImgMask);
+		//cvReleaseImage(&ImgBordered);
 	}
 	ModelID->m_IsInited = true;
 	return true;
@@ -1443,7 +1575,7 @@ void CShapeMatch::shape_match(uint8_t *SearchImage, ShapeInfo *ShapeInfoVec, int
 		int iAngle = ShapeInfoVec->Angel;
 
 		int   n = 0;
-		int   SumOfCoords  = 0;
+		int   SumOfCoords = 0;
 		int   TempPiontX   = 0;
 		int   TempPiontY   = 0;
 		float PartialSum   = 0;
@@ -1456,8 +1588,7 @@ void CShapeMatch::shape_match(uint8_t *SearchImage, ShapeInfo *ShapeInfoVec, int
 		int resultsNumPerDegree;						//每个角度对应的匹配结果数
 		int	totalResultsNum = 0;						//所有结果总数
 		float    minScoreTemp = 0;
-		MatchResultA	resultsPerDeg[MAXTARGETNUM];	//每个角度对应的匹配结果数组
-		MatchResultA	totalResultsTemp[MAXTARGETNUM];	//所有匹配结果数组
+		int offSet = 0;
 
 		for (int k = 0; k < ShapeInfoVec[0].AngleNum; k++)
 		{
@@ -1483,18 +1614,20 @@ void CShapeMatch::shape_match(uint8_t *SearchImage, ShapeInfo *ShapeInfoVec, int
 
 						if(curX < 0 ||curY < 0||curX > width-1 ||curY > height-1)
 							continue;
-
-						iSx = *(pBufGradX + curY*width + curX);			// get corresponding  X derivative from source image
-						iSy = *(pBufGradY + curY*width + curX);			// get corresponding  Y derivative from source image
-						iSm= *(pBufMag   + curY*width + curX);			// get gradients magnitude from source image
+						offSet = curY*width + curX;
+						iSx = *(pBufGradX + offSet);			// get corresponding  X derivative from source image
+						iSy = *(pBufGradY + offSet);			// get corresponding  Y derivative from source image
+						iSm= *(pBufMag   + offSet);			    // get gradients magnitude from source image
 
 						if((iSx != 0 || iSy != 0) && (iTx != 0 || iTy != 0))
 						{
-							PartialSum = PartialSum + ((iSx * iTx) + (iSy * iTy)) * (iTm * iSm);// calculate similarity
+							PartialSum = PartialSum + ((iSx * iTx) + (iSy * iTy)) * (iTm * iSm);		// calculate similarity
 						}
 						SumOfCoords = m + 1;
 						PartialScore = PartialSum / SumOfCoords;															// Normalized
-						if( PartialScore < (MIN(anMinScore + NormGreediness * SumOfCoords, NormMinScore * SumOfCoords)))
+						//if( PartialScore < (MIN(anMinScore + NormGreediness * SumOfCoords, NormMinScore * SumOfCoords)))
+						//	break;
+						if( PartialScore <  NormMinScore * SumOfCoords)
 							break;
 					}
 
@@ -1539,7 +1672,6 @@ void CShapeMatch::shape_match(uint8_t *SearchImage, ShapeInfo *ShapeInfoVec, int
 				totalResultsTemp[totalResultsNum].ResultScore = resultsPerDeg[i].ResultScore;
 				totalResultsNum++;
 			}
-			//printf(" Location:(%d, %d) Angle: %d Score: %.4f\n", TempPiontX, TempPiontY, ShapeInfoVec[k].Angel, ResultScore);
 			n++;
 		}
 
@@ -1575,7 +1707,6 @@ void CShapeMatch::shape_match(uint8_t *SearchImage, ShapeInfo *ShapeInfoVec, int
 		}
 		*NumMatches = resultsCounter;
 	}
-	/* Free buffers for each vector */
 	free(pBufMag);
 	free(pBufGradY);
 	free(pBufGradX);
@@ -1685,7 +1816,9 @@ void CShapeMatch::shape_match_accurate(uint8_t *SearchImage, ShapeInfo *ShapeInf
 						}
 						SumOfCoords = m + 1;
 						PartialScore = PartialSum / SumOfCoords;															// Normalized
-						if( PartialScore < (MIN(anMinScore + NormGreediness * SumOfCoords, NormMinScore * SumOfCoords)))
+						//if( PartialScore < (MIN(anMinScore + NormGreediness * SumOfCoords, NormMinScore * SumOfCoords)))
+						//	break;
+						if( PartialScore <  NormMinScore * SumOfCoords)
 							break;
 					}
 
@@ -1791,27 +1924,27 @@ void CShapeMatch::find_shape_model(IplImage *Image, shape_model *ModelID, float 
 				uint8_t   *pImagePy3 = (uint8_t *) malloc((in_size / 64) * sizeof(uint8_t));
 				memcpy(pImagePy3, pOut+in_size*5/16, in_size/64);
 
-				IplImage	*PyImage = cvCreateImage(cvSize(WidthPy, HeightPy), IPL_DEPTH_8U, 1);
-				memcpy((uint8_t*)PyImage->imageData, pImagePy3, WidthPy*HeightPy);
+				//IplImage	*PyImage = cvCreateImage(cvSize(WidthPy, HeightPy), IPL_DEPTH_8U, 1);
+				//memcpy((uint8_t*)PyImage->imageData, pImagePy3, WidthPy*HeightPy);
 
-				if (isBordred)
-				{
-					CvSize size1= cvSize(ImgWidth >> 3, ImgHeight >>3);//区域大小
-					int RoiRow = (WidthPy - (ImgWidth >> 3)) / 2;
-					int RoiCol  = (HeightPy- (ImgHeight >>3)) / 2;
-					IplImage	*ImageRoi = cvCreateImage(size1, IPL_DEPTH_8U, 1);
-					gen_rectangle(PyImage, ImageRoi, RoiRow, RoiCol);
-				}
+				//if (isBordred)
+				//{
+				//	CvSize size1= cvSize(ImgWidth >> 3, ImgHeight >>3);//区域大小
+				//	int RoiRow = (WidthPy - (ImgWidth >> 3)) / 2;
+				//	int RoiCol  = (HeightPy- (ImgHeight >>3)) / 2;
+				//	IplImage	*ImageRoi = cvCreateImage(size1, IPL_DEPTH_8U, 1);
+				//	gen_rectangle(PyImage, ImageRoi, RoiRow, RoiCol);
+				//}
 
 				/* Set search region */
-				SearchRegion->StartX = (ModelID->m_pShapeInfoPyd3Vec[0].ReferPoint.x >> 1) + (xOffset >> 3) - 4;
-				SearchRegion->StartY = (ModelID->m_pShapeInfoPyd3Vec[0].ReferPoint.y >> 1) + (yOffset >> 3) - 4;
+				SearchRegion->StartX = (ModelID->m_pShapeInfoPyd3Vec[0].ReferPoint.x >> 1) + (xOffset >> 3);
+				SearchRegion->StartY = (ModelID->m_pShapeInfoPyd3Vec[0].ReferPoint.y >> 1) + (yOffset >> 3);
 				SearchRegion->EndX   = WidthPy - SearchRegion->StartX;
 				SearchRegion->EndY   = HeightPy - SearchRegion->StartY;
 
 				SearchRegion->AngleRange = ModelID->m_pShapeInfoPyd3Vec[0].AngleNum;
 				SearchRegion->AngleStart   = ModelID->m_AngleStart;
-				SearchRegion->AngleStop   = ModelID->m_AngleStart + ModelID->m_AngleExtent;
+				SearchRegion->AngleStop   = ModelID->m_AngleStop;
 				SearchRegion->AngleStep   = ModelID->m_AngleStep << 3;
 
 				/* Find shape model in pyramid3 image */
@@ -1824,7 +1957,6 @@ void CShapeMatch::find_shape_model(IplImage *Image, shape_model *ModelID, float 
 				shape_match(pImagePy3, ModelID->m_pShapeInfoPyd3Vec, WidthPy, HeightPy, &TargetNum,
 					Contrast, MinContrast, MinScore, Greediness, SearchRegion, ResultListPy3);
 				 
-				//QuickSort(ResultListPy3, 0, SearchRegion->AngleRange - 1);
 				int n = 0;
 				for (int i = 0; i < MAXTARGETNUM; i++)
 				{
@@ -1845,8 +1977,6 @@ void CShapeMatch::find_shape_model(IplImage *Image, shape_model *ModelID, float 
 					int OffSet = 1 << 3;
 					ReferPointX  = ModelID->m_ImageWidth / 2;
 					ReferPointY  = ModelID->m_ImageHeight / 2;
-					//ReferPointX  = ModelID->m_pShapeInfoTmpVec[0].ImgWidth / 2;
-					//ReferPointY  = ModelID->m_pShapeInfoTmpVec[0].ImgHeight / 2;
 					Row1 = ((ResultPiontX - ReferPointX - OffSet) < 0) ? 0 : (ResultPiontX - ReferPointX - OffSet);
 					Col1  = ((ResultPiontY - ReferPointY - OffSet) < 0) ? 0 : (ResultPiontY - ReferPointY - OffSet);
 					Row2 = ((ResultPiontX + ReferPointX) > ImgWidth) ? ImgWidth : (ResultPiontX + ReferPointX);
@@ -1871,7 +2001,7 @@ void CShapeMatch::find_shape_model(IplImage *Image, shape_model *ModelID, float 
 
 					SearchRegion->AngleRange = ModelID->m_pShapeInfoTmpVec[0].AngleNum;
 					SearchRegion->AngleStart   = ((MatchAngle - OffSet) < ModelID->m_AngleStart) ?  ModelID->m_AngleStart : (MatchAngle - OffSet);
-					SearchRegion->AngleStop   = ((MatchAngle + OffSet) > (ModelID->m_AngleStart + ModelID->m_AngleExtent)) ?  (ModelID->m_AngleStart + ModelID->m_AngleExtent) : (MatchAngle + OffSet);
+					SearchRegion->AngleStop   = ((MatchAngle + OffSet) > ModelID->m_AngleStop) ?  ModelID->m_AngleStop : (MatchAngle + OffSet);
 					SearchRegion->AngleStep   = ModelID->m_AngleStep;
 
 					/* Find shape model in source image */
@@ -1894,8 +2024,9 @@ void CShapeMatch::find_shape_model(IplImage *Image, shape_model *ModelID, float 
 					cvReleaseImage(&SearchImage);
 				}
 
+
 				free(pImagePy3);
-				cvReleaseImage(&PyImage);
+				//cvReleaseImage(&PyImage);
 				free(pOut);
 				free(pIn);
 				break;
@@ -1943,11 +2074,8 @@ void CShapeMatch::find_shape_model(IplImage *Image, shape_model *ModelID, float 
 
 				SearchRegion->AngleRange = ModelID->m_pShapeInfoTmpVec[0].AngleNum;
 				SearchRegion->AngleStart   = ModelID->m_AngleStart;
-				SearchRegion->AngleStop   = ModelID->m_AngleStart + ModelID->m_AngleExtent;
+				SearchRegion->AngleStop   = ModelID->m_AngleStop;
 				SearchRegion->AngleStep   = ModelID->m_AngleStep;
-
-				//MatchResultA *ResultListSrc = (MatchResultA*) malloc(SearchRegion->AngleRange*sizeof(MatchResultA));
-				//memset(ResultListSrc, 0, SearchRegion->AngleRange* sizeof(MatchResultA));
 
 				MatchResultA ResultListSrc[MAXTARGETNUM];
 				memset(ResultListSrc, 0, MAXTARGETNUM * sizeof(MatchResultA));
@@ -2009,17 +2137,24 @@ int CShapeMatch::ShiftSin(int y)
 
 float CShapeMatch::Q_rsqrt(float number)
 {
-	long i;
-	float x2, y;
-	const float threehalfs = 1.5F;
-	x2 = number * 0.5F;
-	y  = number;
-	i  = * ( long * ) &y;  // evil floating point bit level hacking
-	i  = 0x5f3759df - ( i >> 1 );
-	y  = * ( float * ) &i;
-	y  = y * ( threehalfs - ( x2 * y * y ) ); // 1st iteration
-	y  = y * ( threehalfs - ( x2 * y * y ) ); // 2nd iteration, this can be removed
-	return y;
+	//long i;
+	//float x2, y;
+	//const float threehalfs = 1.5F;
+	//x2 = number * 0.5F;
+	//y  = number;
+	//i  = * ( long * ) &y;  // evil floating point bit level hacking
+	//i  = 0x5f3759df - ( i >> 1 );
+	//y  = * ( float * ) &i;
+	//y  = y * ( threehalfs - ( x2 * y * y ) ); // 1st iteration
+	//y  = y * ( threehalfs - ( x2 * y * y ) ); // 2nd iteration, this can be removed
+	//return y;
+
+	float xhalf = 0.5f*number;
+	int i = *(int*)&number; // get bits for floating VALUE
+	i = 0x5f375a86- (i>>1); // gives initial guess y0
+	number = *(float*)&i; // convert bits BACK to float
+	number = number*(1.5f-xhalf*number*number); // Newton step, repeating increases accuracy
+	return number;
 }
 
 float CShapeMatch::new_rsqrt(float f)
@@ -2198,7 +2333,7 @@ static void copyMakeBorder_8u( const uchar* src, size_t srcstep, Size srcroi, //
 		memcpy(dst + (i - top)*dststep, dst + j*dststep, dstroi.width); // 进行整行的复制
 	}
 
-	for( i = 0; i < bottom; i++ ) // 下边界
+	for( i = 0; i < bottom; i++ ) // 先边界
 	{
 		j = borderInterpolate(i + srcroi.height, srcroi.height, borderType);
 		memcpy(dst + (i + srcroi.height)*dststep, dst + j*dststep, dstroi.width); // 进行整行的复制

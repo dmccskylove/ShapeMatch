@@ -1,5 +1,13 @@
 #pragma once
-//#include "stdafx.h"
+
+#include <opencv2/opencv.hpp>
+#include <stdio.h>
+#include <stdlib.h>
+#include <stdint.h>
+#include <string.h>
+#include <math.h>
+#include <vld.h>
+#include <time.h>
 
 using namespace std;
 using namespace cv;
@@ -19,10 +27,10 @@ const int K_CosineTable[24] =
 //匹配结果结构体
 struct MatchResultA
 {
-	int 			Angel;									//匹配角度
-	int 			CenterLocX;							//匹配参考点X坐标
-	int			CenterLocY;							//匹配参考点Y坐标
-	float 		ResultScore;							//匹配的分
+	int 			Angel;						//匹配角度
+	int 			CenterLocX;				//匹配参考点X坐标
+	int			CenterLocY;				//匹配参考点Y坐标
+	float 		ResultScore;				//匹配的分
 };
 
 //特征信息结构体
@@ -35,7 +43,6 @@ struct ShapeInfo
 	short				*EdgeDerivativeY;			//Y方向梯度
 	int 					ImgWidth;					//图像宽度
 	int					ImgHeight;					//图像高度
-	int					VectorSize;					//数组大小
 	int					NoOfCordinates;			//轮廓点个数
 	int					Angel;							//旋转角度
 	int					PyLevel;						//金字塔级别
@@ -45,43 +52,44 @@ struct ShapeInfo
 //模板文件结构体
 struct shape_model
 {
-	int	ID;									//模板ID
-	int 	m_NumLevels;					//金字塔级数
-	int 	m_Contrast;						//高阈值
-	int 	m_MinContrast;				//低阈值
-	int 	m_AngleStart;					//模板旋转起始角度
-	int 	m_AngleExtent;					//模板旋转角度幅度
-	int 	m_AngleStep;					//角度步长
-	int 	m_PointReduction;			//匹配加速因子
-	int    m_ImageWidth;				//原模板图像宽度
-	int    m_ImageHeight;				//原模板图像高度
-	bool	m_IsInited;						//初始化标志
+	int	ID;												//模板ID
+	int 	m_NumLevels;								//金字塔级数
+	int 	m_Contrast;									//高阈值
+	int 	m_MinContrast;							//低阈值
+	int 	m_Granularity;								//边缘颗粒度
+	int 	m_AngleStart;								//模板旋转起始角度
+	int 	m_AngleStop;								//模板旋转终止幅度
+	int 	m_AngleStep;								//角度步长
+	int    m_ImageWidth;							//原模板图像宽度
+	int    m_ImageHeight;							//原模板图像高度
+	bool	m_IsInited;									//初始化标志
 
-	ShapeInfo *m_pShapeInfoPyd1Vec;			//模板金字塔第1级图像的边缘信息
-	ShapeInfo *m_pShapeInfoPyd2Vec;			//模板金字塔第2级图像的边缘信息
-	ShapeInfo *m_pShapeInfoPyd3Vec;			//模板金字塔第3级图像的边缘信息
-	ShapeInfo *m_pShapeInfoTmpVec;			//原模板图像的边缘信息
+	ShapeInfo *m_pShapeInfoPyd1Vec;		//模板金字塔第1级图像的边缘信息
+	ShapeInfo *m_pShapeInfoPyd2Vec;		//模板金字塔第2级图像的边缘信息
+	ShapeInfo *m_pShapeInfoPyd3Vec;		//模板金字塔第3级图像的边缘信息
+	ShapeInfo *m_pShapeInfoTmpVec;		//原模板图像的边缘信息
 };
 
 //搜索区域
 struct search_region
 {
-	int 	StartX;							//X方向起点
-	int 	StartY;							//y方向起点
-	int 	EndX;							//x方向终点
-	int 	EndY;							//y方向终点
-	int 	AngleRange;					//搜索角度数目
-	int    AngleStart;					//搜索预先角度
-	int	AngleStop;					//搜索终止角度
-	int    AngleStep;					//搜索角度步长
+	int 	StartX;											//X方向起点
+	int 	StartY;											//y方向起点
+	int 	EndX;											//x方向终点
+	int 	EndY;											//y方向终点
+	int 	AngleRange;									//搜索角度数目
+	int    AngleStart;									//搜索预先角度
+	int	AngleStop;									//搜索终止角度
+	int    AngleStep;									//搜索角度步长
+
 };
 
 //边界点列表
 struct edge_list
 {
-	CvPoint *EdgePiont;				//边缘坐标数组
-	int 	ListSize;						//数组大小
-	int	Granularity;					//边缘颗粒度
+	CvPoint *EdgePiont;						//边缘坐标数组
+	int 		 ListSize;							//数组大小
+
 };
 
 class CShapeMatch
@@ -170,11 +178,11 @@ public:
 		返回变量：shape_info 形状信息
 		注释：		*/
 
-	bool build_model_list(ShapeInfo *ShapeInfoVec, uint8_t *ImageData, uint8_t *MaskData, int Width, int Height, int Contrast, int MinContrast, int AngleStart, int AngleStop, int AngleStep, int Graininess);
+	bool build_model_list(ShapeInfo *ShapeInfoVec, uint8_t *ImageData, uint8_t *MaskData, int Width, int Height, int Contrast, int MinContrast, int Granularity);
 	/*--------------------------------------------------------------------------------------------*/
 	/*	函数名：build_model_list
 		函数功能：创建角度模板序列
-		输入变量：ShapeInfoVec 序列指针, MinContrast 最小阈值, Contrast 阈值, AngleStart 起始角度, AngleStop 终止角度, AngleStep 角度步长, Graininess 边缘颗粒度
+		输入变量：ShapeInfoVec 序列指针, MinContrast 最小阈值, Contrast 阈值, Graininess 边缘颗粒度
 		返回变量：ModelID 模板文件
 		注释：		*/
 

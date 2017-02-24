@@ -3,7 +3,7 @@
 
 #include "stdafx.h"
 #include "ShapeMatch.h"
-#include <time.h>
+//#include <time.h>
 
 void DrawContours(IplImage* source, CvPoint Result, CvPoint* Contours, int ContoursSize, CvScalar color, int lineWidth)
 {
@@ -39,7 +39,6 @@ void DrawContours(IplImage* source, CvPoint* Contours, int ContoursSize, CvScala
 int _tmain(int argc, _TCHAR* argv[])
 {
 	CShapeMatch SM;
-
 	IplImage* templateImage = cvLoadImage("..\\TestImage\\1.bmp", -1 );
 	if (!templateImage)
 	{
@@ -66,21 +65,20 @@ int _tmain(int argc, _TCHAR* argv[])
 
 	/* Set model parameter */
 	shape_model ModelID;
-	ModelID.m_AngleStart		=  -5;									//起始角度
-	ModelID.m_AngleExtent	= 10;									//角度范围
+	ModelID.m_AngleStart		=  -70;									//起始角度
+	ModelID.m_AngleStop  	= 20;									//终止角度
 	ModelID.m_AngleStep		= 1;										//角度步长
 	ModelID.m_Contrast			= 120;									//高阈值
 	ModelID.m_MinContrast	= 30;									//低阈值
 	ModelID.m_NumLevels		= 3;										//金字塔级数
-	ModelID.m_PointReduction = 1;									//颗粒度
+	ModelID.m_Granularity     = 1;									    //颗粒度
 	ModelID.m_ImageWidth   = grayTemplateImg->width;
 	ModelID.m_ImageHeight  = grayTemplateImg->height;
 
 	/* Train shape model and draw contours in  model image.*/
 	edge_list EdgeList;
 	EdgeList.EdgePiont = (CvPoint *) malloc(grayTemplateImg->width * grayTemplateImg->height * sizeof(CvPoint));
-	EdgeList.Granularity = 1;
-	SM.train_shape_model(grayTemplateImg, ModelID.m_Contrast	, ModelID.m_MinContrast, ModelID.m_PointReduction, &EdgeList);
+	SM.train_shape_model(grayTemplateImg, ModelID.m_Contrast	, ModelID.m_MinContrast, ModelID.m_Granularity, &EdgeList);
 	DrawContours(templateImage, EdgeList.EdgePiont, EdgeList.ListSize , CV_RGB( 255, 0, 0 ),1);
 	cvNamedWindow("Template",CV_WINDOW_AUTOSIZE );
 	cvShowImage("Template",templateImage);
@@ -90,7 +88,7 @@ int _tmain(int argc, _TCHAR* argv[])
 
 	cout<< "\n Search Model Program\n"; 
 	cout<< " ------------------------------------\n";
-	cout<< " 角度范围：" <<ModelID.m_AngleStart <<"°~ "<<ModelID.m_AngleStart +ModelID.m_AngleExtent<<"°\n";
+	cout<< " 角度范围：" <<ModelID.m_AngleStart <<"°~ "<<ModelID.m_AngleStop<<"°\n";
 
 	/* Create shape model file*/
 	clock_t start_time = clock();
@@ -102,7 +100,7 @@ int _tmain(int argc, _TCHAR* argv[])
 	cout<<" Create Time = "<<total_time*1000<<"ms\n";
 
 	/* Search  model */
-	IplImage* searchImage = cvLoadImage("..\\TestImage\\S1.bmp", -1 );
+	IplImage* searchImage = cvLoadImage("..\\TestImage\\b.bmp", -1 );
 	if (!searchImage)
 	{
 		cout<< " 图片加载失败！\n";
@@ -122,7 +120,7 @@ int _tmain(int argc, _TCHAR* argv[])
 
 	/* Set match parameter */
 	int NumMatch		= 4;				//匹配个数
-	float MinScore     = 0.8f;			//最小评分
+	float MinScore     = 0.5f;			//最小评分
 	float Greediness   = 0.9f;			//贪婪度
 
 	MatchResultA Result[10];
