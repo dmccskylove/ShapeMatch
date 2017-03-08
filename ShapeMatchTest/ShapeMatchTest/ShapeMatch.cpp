@@ -47,27 +47,27 @@ void CShapeMatch::gaussian_filter(uint8_t* corrupted, uint8_t* smooth, int width
 
 void CShapeMatch::gen_rectangle(IplImage *Image, IplImage *ModelRegion, int Row1, int Column1)
 {
-	const int startX = Row1;
-	const int startY = Column1;
-	const int width  = ModelRegion->width;
-	const int height = ModelRegion->height;
-	const int imgWidth = Image->width;
+	//const int startX = Row1;
+	//const int startY = Column1;
+	//const int width  = ModelRegion->width;
+	//const int height = ModelRegion->height;
+	//const int imgWidth = Image->width;
 
-	memset(ModelRegion->imageData, 0, ModelRegion->widthStep * ModelRegion->height);
+	//memset(ModelRegion->imageData, 0, ModelRegion->widthStep * ModelRegion->height);
 
-	int i;
-	uint8_t* imageResource = (uint8_t*)malloc(width*height);
-	for(i=0;i<height;i++)
-	{
-		memcpy((imageResource + i*width), (uint8_t*)(Image->imageData + (startY+i)*imgWidth) + startX, width);
-	}
-	memcpy((uint8_t*)ModelRegion->imageData, imageResource, width*height);
-	free(imageResource);
+	//int i;
+	//uint8_t* imageResource = (uint8_t*)malloc(width*height);
+	//for(i=0;i<height;i++)
+	//{
+	//	memcpy((imageResource + i*width), (uint8_t*)(Image->imageData + (startY+i)*imgWidth) + startX, width);
+	//}
+	//memcpy((uint8_t*)ModelRegion->imageData, imageResource, width*height);
+	//free(imageResource);
 
-	//cvSetImageROI(Image,cvRect(Row1,Column1,ModelRegion->width, ModelRegion->height));//设置源图像ROI
-	//cvCopy(Image,ModelRegion); //复制图像
-	////cvSaveImage("..\\SaveImage\ModelRegion.bmp", ModelRegion);
-	//cvResetImageROI(ModelRegion);//源图像用完后，清空ROI
+	cvSetImageROI(Image,cvRect(Row1,Column1,ModelRegion->width, ModelRegion->height));//设置源图像ROI
+	cvCopy(Image,ModelRegion); //复制图像
+	//cvSaveImage("..\\SaveImage\ModelRegion.bmp", ModelRegion);
+	cvResetImageROI(ModelRegion);//源图像用完后，清空ROI
 
 	return;
 }
@@ -890,10 +890,11 @@ void CShapeMatch::extract_shape_info(uint8_t *ImageData, ShapeInfo *ShapeInfoDat
 		int curX,curY;
 		int flag=1;
 		int n = 0;
+		int iPr = PointReduction;
 		//Hysteresis threshold
-		for( i = 1; i < width-1; i+=PointReduction )
+		for( i = 1; i < width-1; i+=iPr )
 		{
-			for( j = 1; j < height-1; j+=PointReduction )
+			for( j = 1; j < height-1; j+=iPr )
 			{
 				int16_t fdx = *(pBufGradX + j*width + i);
 				int16_t fdy = *(pBufGradY + j*width + i);
@@ -985,7 +986,7 @@ void CShapeMatch::extract_shape_info(uint8_t *ImageData, ShapeInfo *ShapeInfoDat
 	free(pInput);
 }
 
-bool CShapeMatch::build_model_list(ShapeInfo *ShapeInfoVec, uint8_t *ImageData, uint8_t *MaskData, int Width, int Height, int Contrast, int MinContrast, int Graininess)
+bool CShapeMatch::build_model_list(ShapeInfo *ShapeInfoVec, uint8_t *ImageData, uint8_t *MaskData, int Width, int Height, int Contrast, int MinContrast, int Granularity)
 {
 	int BufferSizeSrc = Width * Height;
 	int tempLength = (int)(sqrt((float)BufferSizeSrc + (float)BufferSizeSrc) + 10);    //计算旋转扩展图像的长宽
@@ -1029,7 +1030,7 @@ bool CShapeMatch::build_model_list(ShapeInfo *ShapeInfoVec, uint8_t *ImageData, 
 		//	cvSaveImage(buf, DstMask);
 		//}
 
-		extract_shape_info((uint8_t*)DstImage->imageData, &ShapeInfoVec[i], Contrast, MinContrast, 1, (uint8_t*)DstMask->imageData);
+		extract_shape_info((uint8_t*)DstImage->imageData, &ShapeInfoVec[i], Contrast, MinContrast, Granularity, (uint8_t*)DstMask->imageData);
 
 		//if(ShapeInfoVec[i].NoOfCordinates == 0)
 		//	return false;
@@ -1160,10 +1161,10 @@ void CShapeMatch::train_shape_model(IplImage *Image, int Contrast, int MinContra
 		int curX,curY;
 		int flag=1;
 		int n = 0;
-
-		for( i = 1; i < width-1; i++ )
+		int iPr = PointReduction;
+		for( i = 1; i < width-1; i+=iPr )
 		{
-			for( j = 1; j < height-1; j++ )
+			for( j = 1; j < height-1; j+=iPr )
 			{
 				int16_t fdx = *(pBufGradX + j*width + i);
 				int16_t fdy = *(pBufGradY + j*width + i);
@@ -1300,13 +1301,12 @@ bool CShapeMatch::create_shape_model(IplImage *Template, shape_model *ModelID)
 				Height = BorderedHeight >> 3;
 				BufferSize = Width*Height;
 				AngleStep = ModelID->m_AngleStep << 3;
-				int offset = in_size*5/16;
 
 				uint8_t *pImageDataPy3 = (uint8_t *) malloc(BufferSize);
-				memcpy(pImageDataPy3, pOut+offset, BufferSize * sizeof(uint8_t));
+				memcpy(pImageDataPy3, pOut+in_size*5/16, BufferSize * sizeof(uint8_t));
 
 				uint8_t	*pMaskDataPy3 = (uint8_t *)malloc(BufferSize);
-				memcpy(pMaskDataPy3, pOutMask+offset, BufferSize * sizeof(uint8_t));
+				memcpy(pMaskDataPy3, pOutMask+in_size*5/16, BufferSize * sizeof(uint8_t));
 
 				IsBuild = build_model_list(ModelID->m_pShapeInfoPyd3Vec, pImageDataPy3, pMaskDataPy3, Width, Height,
 					Contrast, MinContrast, Granularity);
@@ -1617,7 +1617,7 @@ void CShapeMatch::shape_match(uint8_t *SearchImage, ShapeInfo *ShapeInfoVec, int
 						offSet = curY*width + curX;
 						iSx = *(pBufGradX + offSet);			// get corresponding  X derivative from source image
 						iSy = *(pBufGradY + offSet);			// get corresponding  Y derivative from source image
-						iSm= *(pBufMag   + offSet);			    // get gradients magnitude from source image
+						iSm = *(pBufMag   + offSet);			// get gradients magnitude from source image
 
 						if((iSx != 0 || iSy != 0) && (iTx != 0 || iTy != 0))
 						{
@@ -1625,10 +1625,10 @@ void CShapeMatch::shape_match(uint8_t *SearchImage, ShapeInfo *ShapeInfoVec, int
 						}
 						SumOfCoords = m + 1;
 						PartialScore = PartialSum / SumOfCoords;															// Normalized
-						//if( PartialScore < (MIN(anMinScore + NormGreediness * SumOfCoords, NormMinScore * SumOfCoords)))
-						//	break;
-						if( PartialScore <  NormMinScore * SumOfCoords)
+						if( PartialScore < (MIN(anMinScore + NormGreediness * SumOfCoords, NormMinScore * SumOfCoords)))
 							break;
+						//if( PartialScore <  NormMinScore * SumOfCoords)
+						//	break;
 					}
 
 					if (PartialScore > MinScore)
@@ -1816,9 +1816,7 @@ void CShapeMatch::shape_match_accurate(uint8_t *SearchImage, ShapeInfo *ShapeInf
 						}
 						SumOfCoords = m + 1;
 						PartialScore = PartialSum / SumOfCoords;															// Normalized
-						//if( PartialScore < (MIN(anMinScore + NormGreediness * SumOfCoords, NormMinScore * SumOfCoords)))
-						//	break;
-						if( PartialScore <  NormMinScore * SumOfCoords)
+						if( PartialScore < (MIN(anMinScore + NormGreediness * SumOfCoords, NormMinScore * SumOfCoords)))
 							break;
 					}
 
@@ -1921,8 +1919,14 @@ void CShapeMatch::find_shape_model(IplImage *Image, shape_model *ModelID, float 
 				WidthPy  = width >> 3;
 				HeightPy = height >> 3;
 
-				uint8_t   *pImagePy3 = (uint8_t *) malloc((in_size / 64) * sizeof(uint8_t));
-				memcpy(pImagePy3, pOut+in_size*5/16, in_size/64);
+				uint8_t   *pImagePy3 = (uint8_t *) malloc((in_size/64) * sizeof(uint8_t));
+				memcpy(pImagePy3, pOut + in_size * 5/16, in_size/64);
+
+				uint8_t	  *pImagePy2 = (uint8_t *) malloc((in_size/16) * sizeof(uint8_t));
+				memcpy(pImagePy2, pOut + in_size/4, in_size/16);
+
+				uint8_t	  *pImagePy1 = (uint8_t *) malloc((in_size/4) * sizeof(uint8_t));
+				memcpy(pImagePy1, pOut, in_size/4);
 
 				//IplImage	*PyImage = cvCreateImage(cvSize(WidthPy, HeightPy), IPL_DEPTH_8U, 1);
 				//memcpy((uint8_t*)PyImage->imageData, pImagePy3, WidthPy*HeightPy);
@@ -1956,8 +1960,10 @@ void CShapeMatch::find_shape_model(IplImage *Image, shape_model *ModelID, float 
 				int TargetNum = 0;
 				shape_match(pImagePy3, ModelID->m_pShapeInfoPyd3Vec, WidthPy, HeightPy, &TargetNum,
 					Contrast, MinContrast, MinScore, Greediness, SearchRegion, ResultListPy3);
-				 
+
+				 /*------------------------------------------------------------------ */
 				int n = 0;
+				int OffSet = 0;
 				for (int i = 0; i < MAXTARGETNUM; i++)
 				{
 					MatchPiontX = ResultListPy3[i].CenterLocX;
@@ -1969,18 +1975,127 @@ void CShapeMatch::find_shape_model(IplImage *Image, shape_model *ModelID, float 
 						break;
 					if (SocoreMax <= MinScore)
 						continue;
+					IplImage	*SearchImage, *cropImage;
+
+					//Search model in pyramid2 image
+					WidthPy  = width >> 2;
+					HeightPy = height >> 2;
+
+					ResultPiontX = ((MatchPiontX << 1) < 0) ? 0 : (MatchPiontX << 1);
+					ResultPiontY = ((MatchPiontY << 1 )< 0) ? 0 : (MatchPiontY << 1);
+
+					ReferPointX  = (ModelID->m_ImageWidth >> 3) + 5;
+					ReferPointY  = (ModelID->m_ImageHeight >> 3) + 5;
+
+					Row1 = ((ResultPiontX - ReferPointX - 2) < 0) ? 0 : (ResultPiontX - ReferPointX - 2);
+					Col1  = ((ResultPiontY - ReferPointY - 2) < 0) ? 0 : (ResultPiontY - ReferPointY - 2);
+					Row2 = ((ResultPiontX + ReferPointX + 2) > WidthPy) ? WidthPy : (ResultPiontX + ReferPointX + 2);
+					Col2  = ((ResultPiontY + ReferPointY + 2) > HeightPy) ? HeightPy : (ResultPiontY + ReferPointY + 2);
 					
-					ResultPiontX = ((MatchPiontX << 3) < 0) ? 0 : (MatchPiontX << 3);
-					ResultPiontY = ((MatchPiontY << 3 )< 0) ? 0 : (MatchPiontY << 3);
+					/* Set accurate match image */
+					cropImgW = abs(Row1 - Row2);
+					cropImgW = ((cropImgW & 1) == 0) ? cropImgW : (cropImgW + 1);
+					cropImgH = abs(Col1 - Col2);
+					cropImgH = ((cropImgH & 1) == 0) ? cropImgH : (cropImgH + 1);
+
+					SearchImage = cvCreateImage(cvSize(WidthPy, HeightPy), IPL_DEPTH_8U, 1);
+					memcpy((uint8_t*)SearchImage->imageData, pImagePy2, WidthPy*HeightPy);
+					cropImage = cvCreateImage(cvSize(cropImgW, cropImgH), IPL_DEPTH_8U, 1);
+					gen_rectangle(SearchImage, cropImage, Row1, Col1);
+
+					SearchRegion->StartX = ((cropImgW / 2 - 2) < 0) ? 0 : (cropImgW / 2 - 2);
+					SearchRegion->StartY = ((cropImgH / 2 - 2) < 0) ? 0 : (cropImgH / 2 - 2);
+					SearchRegion->EndX   = SearchRegion->StartX + 4;
+					SearchRegion->EndY   = SearchRegion->StartY + 4;
+
+					SearchRegion->AngleRange = ModelID->m_pShapeInfoPyd2Vec[0].AngleNum;
+					SearchRegion->AngleStart   = ((MatchAngle - OffSet) < ModelID->m_AngleStart) ?  ModelID->m_AngleStart : (MatchAngle - 4);
+					SearchRegion->AngleStop   = ((MatchAngle + OffSet) > ModelID->m_AngleStop) ?  ModelID->m_AngleStop : (MatchAngle + 4);
+					SearchRegion->AngleStep   = ModelID->m_AngleStep << 2;
+
+					/* Find shape model in pyramid2 image */
+					if(ModelID->m_pShapeInfoPyd2Vec == NULL)
+						return;
+
+					MatchResultA ResultPy2;
+					shape_match_accurate((uint8_t*)cropImage->imageData, ModelID->m_pShapeInfoPyd2Vec, cropImgW, cropImgH,
+						Contrast, MinContrast, MinScore, Greediness, SearchRegion, &ResultPy2);
+
+					MatchPiontX = ResultPy2.CenterLocX + Row1 - xOffset / 4;
+					MatchPiontY = ResultPy2.CenterLocY + Col1 - yOffset / 4;
+					MatchAngle  = ResultPy2.Angel;
+					SocoreMax	= ResultPy2.ResultScore;
+					if (SocoreMax  < MinScore)
+						continue;
+
+					/*------------------------------------------------------------------ */
+					//Search model in pyramid1 image
+					WidthPy  = width >> 1;
+					HeightPy = height >> 1;
+
+					ResultPiontX = ((MatchPiontX << 1) < 0) ? 0 : (MatchPiontX << 1);
+					ResultPiontY = ((MatchPiontY << 1 )< 0) ? 0 : (MatchPiontY << 1);
+
+					ReferPointX  = ModelID->m_ImageWidth >> 2;
+					ReferPointY  = ModelID->m_ImageHeight >> 2;
+					Row1 = ((ResultPiontX - ReferPointX - 2) < 0) ? 0 : (ResultPiontX - ReferPointX - 2);
+					Col1  = ((ResultPiontY - ReferPointY - 2) < 0) ? 0 : (ResultPiontY - ReferPointY - 2);
+					Row2 = ((ResultPiontX + ReferPointX + 2) > WidthPy) ? WidthPy : (ResultPiontX + ReferPointX + 2);
+					Col2  = ((ResultPiontY + ReferPointY + 2) > HeightPy) ? HeightPy : (ResultPiontY + ReferPointY + 2);
+
+					/* Set accurate match image */
+					cropImgW = abs(Row1 - Row2);
+					cropImgW = ((cropImgW & 1) == 0) ? cropImgW : (cropImgW + 1);
+					cropImgH = abs(Col1 - Col2);
+					cropImgH = ((cropImgH & 1) == 0) ? cropImgH : (cropImgH + 1);
+
+					SearchImage = cvCreateImage(cvSize(WidthPy, HeightPy), IPL_DEPTH_8U, 1);
+					memcpy((uint8_t*)SearchImage->imageData, pImagePy1, WidthPy*HeightPy);
+					cropImage = cvCreateImage(cvSize(cropImgW, cropImgH), IPL_DEPTH_8U, 1);
+					gen_rectangle(SearchImage, cropImage, Row1, Col1);
+
+					SearchRegion->StartX = ((cropImgW / 2 - 2) < 0) ? 0 : (cropImgW / 2 - 2);
+					SearchRegion->StartY = ((cropImgH / 2 - 2) < 0) ? 0 : (cropImgH / 2 - 2);
+					SearchRegion->EndX   = SearchRegion->StartX + 4;
+					SearchRegion->EndY   = SearchRegion->StartY + 4;
+
+					SearchRegion->AngleRange = ModelID->m_pShapeInfoPyd1Vec[0].AngleNum;
+					SearchRegion->AngleStart   = ((MatchAngle - OffSet) < ModelID->m_AngleStart) ?  ModelID->m_AngleStart : (MatchAngle - 2);
+					SearchRegion->AngleStop   = ((MatchAngle + OffSet) > ModelID->m_AngleStop) ?  ModelID->m_AngleStop : (MatchAngle + 2);
+					SearchRegion->AngleStep   = ModelID->m_AngleStep << 1;
+
+					/* Find shape model in pyramid1 image */
+					if(ModelID->m_pShapeInfoPyd1Vec == NULL)
+						return;
+
+					MatchResultA ResultPy1;
+					shape_match_accurate((uint8_t*)cropImage->imageData, ModelID->m_pShapeInfoPyd1Vec, cropImgW, cropImgH,
+						Contrast, MinContrast, MinScore, Greediness, SearchRegion, &ResultPy1);
+
+					MatchPiontX = ResultPy1.CenterLocX + Row1 - xOffset / 2;
+					MatchPiontY = ResultPy1.CenterLocY + Col1 - yOffset / 2;
+					MatchAngle  = ResultPy1.Angel;
+					SocoreMax	= ResultPy1.ResultScore;
+					if (SocoreMax  < MinScore)
+						continue;
+
+					/*------------------------------------------------------------------ */
+
+					//Search model in source image
+					//ResultPiontX = ((MatchPiontX << 3) < 0) ? 0 : (MatchPiontX << 3);
+					//ResultPiontY = ((MatchPiontY << 3 )< 0) ? 0 : (MatchPiontY << 3);
+
+					ResultPiontX = ((MatchPiontX << 1) < 0) ? 0 : (MatchPiontX << 1);
+					ResultPiontY = ((MatchPiontY << 1 )< 0) ? 0 : (MatchPiontY << 1);
 
 					//printf(" Location:(%d, %d) Angle: %d Score: %.4f\n", ResultPiontX - xOffset, ResultPiontY- yOffset, MatchAngle, SocoreMax);
-					int OffSet = 1 << 3;
-					ReferPointX  = ModelID->m_ImageWidth / 2;
-					ReferPointY  = ModelID->m_ImageHeight / 2;
-					Row1 = ((ResultPiontX - ReferPointX - OffSet) < 0) ? 0 : (ResultPiontX - ReferPointX - OffSet);
-					Col1  = ((ResultPiontY - ReferPointY - OffSet) < 0) ? 0 : (ResultPiontY - ReferPointY - OffSet);
-					Row2 = ((ResultPiontX + ReferPointX) > ImgWidth) ? ImgWidth : (ResultPiontX + ReferPointX);
-					Col2  = ((ResultPiontY + ReferPointY) > ImgHeight) ? ImgHeight : (ResultPiontY + ReferPointY);
+					OffSet = 1 << 3;
+					ReferPointX  = ModelID->m_ImageWidth >> 1;
+					ReferPointY  = ModelID->m_ImageHeight >> 1;
+					Row1 = ((ResultPiontX - ReferPointX - 2) < 0) ? 0 : (ResultPiontX - ReferPointX - 2);
+					Col1  = ((ResultPiontY - ReferPointY - 2) < 0) ? 0 : (ResultPiontY - ReferPointY - 2);
+					Row2 = ((ResultPiontX + ReferPointX + 2) > width) ? width : (ResultPiontX + ReferPointX + 2);
+					Col2  = ((ResultPiontY + ReferPointY + 2) > height) ? height : (ResultPiontY + ReferPointY + 2);
 
 					/* Set accurate match image */
 					cropImgW = abs(Row1 - Row2);
@@ -1988,20 +2103,20 @@ void CShapeMatch::find_shape_model(IplImage *Image, shape_model *ModelID, float 
 					cropImgH = abs(Col1 - Col2);
 					cropImgH = ((cropImgH & 1) == 0) ? cropImgH :  (cropImgH + 1);
 
-					IplImage	*SearchImage = cvCreateImage(cvSize(width, height), IPL_DEPTH_8U, 1);
+					SearchImage = cvCreateImage(cvSize(width, height), IPL_DEPTH_8U, 1);
 					memcpy((uint8_t*)SearchImage->imageData, pData, width*height);
-					IplImage	*cropImage = cvCreateImage(cvSize(cropImgW, cropImgH), IPL_DEPTH_8U, 1);
+					cropImage = cvCreateImage(cvSize(cropImgW, cropImgH), IPL_DEPTH_8U, 1);
 					gen_rectangle(SearchImage, cropImage, Row1, Col1);
 					//cvSaveImage("cropImage.bmp", cropImage);
 
-					SearchRegion->StartX = ((ResultPiontX - Row1 - OffSet) < 0) ? 0 : (ResultPiontX - Row1 - OffSet);
-					SearchRegion->StartY = ((ResultPiontY - Col1 - OffSet) < 0) ? 0 : (ResultPiontY - Col1 - OffSet);
-					SearchRegion->EndX   = SearchRegion->StartX + OffSet * 2;
-					SearchRegion->EndY   = SearchRegion->StartY + OffSet * 2;
+					SearchRegion->StartX = ((cropImgW / 2 - 2) < 0) ? 0 : (cropImgW / 2 - 2);
+					SearchRegion->StartY = ((cropImgH / 2 - 2) < 0) ? 0 : (cropImgH / 2 - 2);
+					SearchRegion->EndX   = SearchRegion->StartX + 4;
+					SearchRegion->EndY   = SearchRegion->StartY + 4;
 
 					SearchRegion->AngleRange = ModelID->m_pShapeInfoTmpVec[0].AngleNum;
-					SearchRegion->AngleStart   = ((MatchAngle - OffSet) < ModelID->m_AngleStart) ?  ModelID->m_AngleStart : (MatchAngle - OffSet);
-					SearchRegion->AngleStop   = ((MatchAngle + OffSet) > ModelID->m_AngleStop) ?  ModelID->m_AngleStop : (MatchAngle + OffSet);
+					SearchRegion->AngleStart   = ((MatchAngle - OffSet) < ModelID->m_AngleStart) ?  ModelID->m_AngleStart : (MatchAngle - 2);
+					SearchRegion->AngleStop   = ((MatchAngle + OffSet) > ModelID->m_AngleStop) ?  ModelID->m_AngleStop : (MatchAngle + 2);
 					SearchRegion->AngleStep   = ModelID->m_AngleStep;
 
 					/* Find shape model in source image */
@@ -2024,7 +2139,8 @@ void CShapeMatch::find_shape_model(IplImage *Image, shape_model *ModelID, float 
 					cvReleaseImage(&SearchImage);
 				}
 
-
+				free(pImagePy1);
+				free(pImagePy2);
 				free(pImagePy3);
 				//cvReleaseImage(&PyImage);
 				free(pOut);

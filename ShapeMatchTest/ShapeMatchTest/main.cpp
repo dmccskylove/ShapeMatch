@@ -120,7 +120,7 @@ int _tmain(int argc, _TCHAR* argv[])
 
 	/* Set match parameter */
 	int NumMatch		= 4;				//匹配个数
-	float MinScore     = 0.5f;			//最小评分
+	float MinScore     = 0.7f;			//最小评分
 	float Greediness   = 0.9f;			//贪婪度
 
 	MatchResultA Result[10];
