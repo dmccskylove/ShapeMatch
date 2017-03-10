@@ -39,7 +39,7 @@ void DrawContours(IplImage* source, CvPoint* Contours, int ContoursSize, CvScala
 int _tmain(int argc, _TCHAR* argv[])
 {
 	CShapeMatch SM;
-	IplImage* templateImage = cvLoadImage("..\\TestImage\\1.bmp", -1 );
+	IplImage* templateImage = cvLoadImage("..\\TestImage\\3.bmp", -1 );
 	if (!templateImage)
 	{
 		cout<< " 图片加载失败！\n";
@@ -68,7 +68,7 @@ int _tmain(int argc, _TCHAR* argv[])
 	ModelID.m_AngleStart		=  -70;									//起始角度
 	ModelID.m_AngleStop  	= 20;									//终止角度
 	ModelID.m_AngleStep		= 1;										//角度步长
-	ModelID.m_Contrast			= 120;									//高阈值
+	ModelID.m_Contrast			= 80;									//高阈值
 	ModelID.m_MinContrast	= 30;									//低阈值
 	ModelID.m_NumLevels		= 3;										//金字塔级数
 	ModelID.m_Granularity     = 1;									    //颗粒度
@@ -78,7 +78,7 @@ int _tmain(int argc, _TCHAR* argv[])
 	/* Train shape model and draw contours in  model image.*/
 	edge_list EdgeList;
 	EdgeList.EdgePiont = (CvPoint *) malloc(grayTemplateImg->width * grayTemplateImg->height * sizeof(CvPoint));
-	SM.train_shape_model(grayTemplateImg, ModelID.m_Contrast	, ModelID.m_MinContrast, ModelID.m_Granularity, &EdgeList);
+	SM.train_shape_model(grayTemplateImg, ModelID.m_Contrast, ModelID.m_MinContrast, ModelID.m_Granularity, &EdgeList);
 	DrawContours(templateImage, EdgeList.EdgePiont, EdgeList.ListSize , CV_RGB( 255, 0, 0 ),1);
 	cvNamedWindow("Template",CV_WINDOW_AUTOSIZE );
 	cvShowImage("Template",templateImage);
@@ -100,7 +100,7 @@ int _tmain(int argc, _TCHAR* argv[])
 	cout<<" Create Time = "<<total_time*1000<<"ms\n";
 
 	/* Search  model */
-	IplImage* searchImage = cvLoadImage("..\\TestImage\\b.bmp", -1 );
+	IplImage* searchImage = cvLoadImage("..\\TestImage\\l.bmp", -1 );
 	if (!searchImage)
 	{
 		cout<< " 图片加载失败！\n";
@@ -121,7 +121,7 @@ int _tmain(int argc, _TCHAR* argv[])
 	/* Set match parameter */
 	int NumMatch		= 4;				//匹配个数
 	float MinScore     = 0.7f;			//最小评分
-	float Greediness   = 0.9f;			//贪婪度
+	float Greediness   = 0.7f;			//贪婪度
 
 	MatchResultA Result[10];
 	memset(Result, 0, 10 * sizeof(MatchResultA));
