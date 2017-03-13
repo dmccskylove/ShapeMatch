@@ -39,7 +39,7 @@ void DrawContours(IplImage* source, CvPoint* Contours, int ContoursSize, CvScala
 int _tmain(int argc, _TCHAR* argv[])
 {
 	CShapeMatch SM;
-	IplImage* templateImage = cvLoadImage("..\\TestImage\\3.bmp", -1 );
+	IplImage* templateImage = cvLoadImage("..\\TestImage\\Train.bmp", -1 );
 	if (!templateImage)
 	{
 		cout<< " 图片加载失败！\n";
@@ -65,8 +65,8 @@ int _tmain(int argc, _TCHAR* argv[])
 
 	/* Set model parameter */
 	shape_model ModelID;
-	ModelID.m_AngleStart		=  -70;									//起始角度
-	ModelID.m_AngleStop  	= 20;									//终止角度
+	ModelID.m_AngleStart		=  0;										//起始角度
+	ModelID.m_AngleStop  	= 0;										//终止角度
 	ModelID.m_AngleStep		= 1;										//角度步长
 	ModelID.m_Contrast			= 80;									//高阈值
 	ModelID.m_MinContrast	= 30;									//低阈值
@@ -100,7 +100,7 @@ int _tmain(int argc, _TCHAR* argv[])
 	cout<<" Create Time = "<<total_time*1000<<"ms\n";
 
 	/* Search  model */
-	IplImage* searchImage = cvLoadImage("..\\TestImage\\l.bmp", -1 );
+	IplImage* searchImage = cvLoadImage("..\\TestImage\\a.bmp", -1 );
 	if (!searchImage)
 	{
 		cout<< " 图片加载失败！\n";
